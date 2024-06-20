@@ -6,10 +6,10 @@ if (!isset($_SESSION['username']) || $_SESSION['username'] === 'admin') {
     exit();
 }
 
-$servername = "localhost"; 
-$username = "root"; 
-$password = ""; 
-$dbname = "Kultura"; 
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "Kultura";
 
 $conn = new mysqli($servername, $username, $password, $dbname);
 
@@ -30,6 +30,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['event_id']) && isset(
     $stmt->close();
 }
 
+// Обработка регистрации на мероприятие
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['participate_event_id']) && isset($_POST['contact_info'])) {
+    $event_id = $_POST['participate_event_id'];
+    $username = $_SESSION['username'];
+    $contact_info = $_POST['contact_info'];
+
+    $stmt = $conn->prepare("INSERT INTO participation (event_id, username, contact_info) VALUES (?, ?, ?)");
+    $stmt->bind_param("iss", $event_id, $username, $contact_info);
+    $stmt->execute();
+    $stmt->close();
+}
+
 $whereClauses = [];
 if (!empty($_GET['date'])) {
     $date = $_GET['date'];
@@ -46,6 +58,10 @@ if (!empty($_GET['location'])) {
 if (!empty($_GET['cost'])) {
     $cost = $_GET['cost'];
     $whereClauses[] = "cost='$cost'";
+}
+if (!empty($_GET['search'])) {
+    $search = $conn->real_escape_string($_GET['search']);
+    $whereClauses[] = "(title LIKE '%$search%' OR description LIKE '%$search%' OR organizer LIKE '%$search%')";
 }
 
 $where = "";
@@ -108,7 +124,7 @@ $conn->close();
         .filter-form {
             margin-bottom: 20px;
         }
-        .filter-form input[type="date"], .filter-form select {
+        .filter-form input[type="date"], .filter-form select, .filter-form input[type="text"] {
             width: 150px;
             padding: 10px;
             margin: 5px;
@@ -144,19 +160,19 @@ $conn->close();
         .card .date-time, .card .location, .card .cost {
             font-weight: bold;
         }
-        .review-form {
+        .review-form, .participation-form {
             margin-top: 20px;
             padding: 10px;
             border-top: 1px solid #ccc;
         }
-        .review-form textarea {
+        .review-form textarea, .participation-form input[type="text"] {
             width: 100%;
             padding: 10px;
             margin: 5px 0;
             border: 1px solid #ccc;
             border-radius: 5px;
         }
-        .review-form input[type="number"], .review-form input[type="submit"] {
+        .review-form input[type="number"], .review-form input[type="submit"], .participation-form input[type="submit"] {
             padding: 10px;
             margin: 5px 0;
             border: 1px solid #ccc;
@@ -200,6 +216,7 @@ $conn->close();
                 <option value="Платно">Платно</option>
                 <option value="Бесплатно">Бесплатно</option>
             </select>
+            <input type="text" name="search" placeholder="Поиск по ключевым словам">
             <input type="submit" value="Фильтровать">
         </form>
         <?php foreach ($events as $event): ?>
@@ -218,7 +235,7 @@ $conn->close();
                         <?php foreach ($reviews[$event['id']] as $review): ?>
                             <div class="review">
                                 <p class="username"><?= htmlspecialchars($review['username']) ?></p>
-                                <p class="rating">Оценка: <?= htmlspecialchars($review['rating']) ?></p>
+                                <p class="rating">Оценка: <?= htmlspecialchars($review['rating']) ?>/5</p>
                                 <p class="comment"><?= htmlspecialchars($review['comment']) ?></p>
                             </div>
                         <?php endforeach; ?>
@@ -226,14 +243,19 @@ $conn->close();
                         <p>Отзывов пока нет.</p>
                     <?php endif; ?>
                 </div>
-
                 <div class="review-form">
-                    <h3>Оставить отзыв</h3>
-                    <form method="POST" action="events.php">
+                    <form action="events.php" method="POST">
                         <input type="hidden" name="event_id" value="<?= $event['id'] ?>">
-                        <input type="number" name="rating" min="1" max="5" placeholder="Оценка (1-5)" required>
                         <textarea name="comment" placeholder="Комментарий"></textarea>
-                        <input type="submit" value="Отправить отзыв">
+                        <input type="number" name="rating" min="1" max="5" placeholder="Оценка (1-5)" required>
+                        <input type="submit" value="Оставить отзыв">
+                    </form>
+                </div>
+                <div class="participation-form">
+                    <form action="events.php" method="POST">
+                        <input type="hidden" name="participate_event_id" value="<?= $event['id'] ?>">
+                        <input type="text" name="contact_info" placeholder="Ваши контактные данные" required>
+                        <input type="submit" value="Участвовать">
                     </form>
                 </div>
             </div>

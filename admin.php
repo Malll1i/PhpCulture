@@ -46,6 +46,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Получение данных о мероприятиях и участниках
+$projects_sql = "SELECT * FROM cultural_projects";
+$projects_result = $conn->query($projects_sql);
+
+$projects = [];
+if ($projects_result->num_rows > 0) {
+    while($project = $projects_result->fetch_assoc()) {
+        $projects[] = $project;
+    }
+}
+
+$participation_sql = "SELECT p.event_id, p.username, p.contact_info, c.title 
+                      FROM participation p 
+                      JOIN cultural_projects c ON p.event_id = c.id";
+$participation_result = $conn->query($participation_sql);
+
+$participations = [];
+if ($participation_result->num_rows > 0) {
+    while($participation = $participation_result->fetch_assoc()) {
+        $participations[] = $participation;
+    }
+}
+
 $conn->close();
 ?>
 
@@ -63,7 +86,7 @@ $conn->close();
             color: #333;
         }
         .container {
-            width: 500px;
+            width: 80%;
             margin: 0 auto;
             padding: 30px;
             background: rgba(255, 255, 255, 0.9);
@@ -107,6 +130,21 @@ $conn->close();
         .message.error {
             color: #d9534f;
         }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
     </style>
 </head>
 <body>
@@ -137,6 +175,30 @@ $conn->close();
             <div class="message <?= strpos($message, 'успешно') !== false ? 'success' : 'error' ?>">
                 <?= htmlspecialchars($message) ?>
             </div>
+        <?php endif; ?>
+
+        <h2>Участники мероприятий</h2>
+        <?php if (!empty($participations)): ?>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Название мероприятия</th>
+                        <th>Имя пользователя</th>
+                        <th>Контактная информация</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($participations as $participation): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($participation['title']) ?></td>
+                            <td><?= htmlspecialchars($participation['username']) ?></td>
+                            <td><?= htmlspecialchars($participation['contact_info']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <p>Участников нет.</p>
         <?php endif; ?>
     </div>
 </body>
